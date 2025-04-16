@@ -1,0 +1,62 @@
+name: Build Obfuscate BPB Panel
+
+# 触发条件：main 分支 push，或每天定时构建
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 16 * * *" # 每天 UTC 时间 16:00（北京时间 00:00）
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 第一步：拉取代码
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      # 设置 Node.js 环境
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "latest"
+
+      # 安装混淆器
+      - name: Install dependencies
+        run: |
+          npm install -g javascript-obfuscator
+
+      # 下载最新源文件，并强制替换 origin.js
+      - name: Download and prepare worker file
+        run: |
+          if [ -f origin.js ]; then
+            echo "⚠️ 检测到旧的 origin.js，正在删除..."
+            rm -f origin.js
+          fi
+
+          echo "🌐 正在下载最新 unobfuscated worker..."
+          wget -O origin.zip https://github.com/bia-pain-bache/BPB-Worker-Panel/releases/latest/download/unobfuscated-worker.zip
+          unzip origin.zip -d temp
+          mv temp/_worker.js ./origin.js
+          rm -rf temp origin.zip
+          echo "✅ 下载完成，origin.js 就绪"
+
+      # 进行自动混淆，尝试多个策略直到满足 ≤1MB 限制
+      - name: Obfuscate BPB worker js (Auto strategy)
+        run: |
+          chmod +x ./auto-obfuscate.sh
+          ./auto-obfuscate.sh
+
+      # 自动提交混淆后的 _worker.js
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: main
+          commit_message: ':arrow_up: update obfuscated bpb panel (≤1MB, auto strategy)'
+          commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
+          push_options: '--set-upstream'
