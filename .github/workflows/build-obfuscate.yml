@@ -14,7 +14,7 @@ jobs:
 
     steps:
       # 第一步：带权限检出
-      - name: ✅ 检出代码 (含写权限)
+      - name: ✅ 检出代码
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -38,8 +38,8 @@ jobs:
       - name: 🛡️ 执行混淆脚本
         run: bash ./auto-obfuscate.sh
 
-      # 第六步：强制认证推送
-      - name: 🚀 提交并推送更改
+      # 第六步：提交变更 (修正版)
+      - name: 🚀 自动提交更改
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
@@ -49,5 +49,3 @@ jobs:
             obfuscation-log.txt
           commit_user_name: "github-actions[bot]"
           commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
-          # 强制使用令牌认证
-          token: ${{ secrets.GITHUB_TOKEN }}
