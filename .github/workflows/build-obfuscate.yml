@@ -1,52 +1,36 @@
-name: Build Obfuscate BPB Panel
+name: 自动构建并混淆
 
 on:
   push:
-    branches:
-      - main
-  schedule:
-    - cron: "0 16 * * *" # 每天 UTC 时间 16:00（北京时间 00:00）
-
-permissions:
-  contents: write
+    branches: [main]
+    paths:
+      - "origin.js"
+      - "auto-obfuscate.sh"
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出代码
+      - name: ✅ 检出代码
         uses: actions/checkout@v4
 
-      - name: 安装 Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "latest"
-
-      - name: 安装混淆工具
+      - name: 🧰 安装 JavaScript Obfuscator
         run: npm install -g javascript-obfuscator
 
-      - name: 下载 origin.js 并替换
-        run: |
-          if [ -f origin.js ]; then
-            echo "⚠️ 旧版 origin.js 存在，删除中..."
-            rm -f origin.js
-          fi
-          echo "⬇️ 正在下载原始 worker..."
-          wget -O origin.zip https://github.com/bia-pain-bache/BPB-Worker-Panel/releases/latest/download/unobfuscated-worker.zip
-          unzip origin.zip -d temp
-          mv temp/_worker.js ./origin.js
-          rm -rf temp origin.zip
-          echo "✅ origin.js 准备就绪"
+      - name: 🧪 执行自动混淆脚本
+        run: bash ./auto-obfuscate.sh
 
-      - name: 自动混淆（随机降级混淆 ≤1MB）
+      - name: 🛠️ 拉取远程以避免冲突
         run: |
-          chmod +x ./auto-obfuscate.sh
-          ./auto-obfuscate.sh
+          git config user.name github-actions[bot]
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase
 
-      - name: 自动提交混淆文件
+      - name: 🚀 自动提交混淆文件和日志
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
           commit_message: ':lock: 自动混淆 _worker.js (≤1MB, 随机策略)'
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
+          file_pattern: '_worker.js obfuscation-log.txt'
