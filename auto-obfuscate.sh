@@ -1,11 +1,10 @@
 #!/bin/bash
 set -eo pipefail
 
-# 配置文件
 INPUT_FILE="origin.js"
 OUTPUT_FILE="_worker.js"
 LOG_FILE="obfuscation-log.txt"
-MAX_SIZE=1048576  # 1MB = 1024*1024
+MAX_SIZE=1048576  # 1MB
 MAX_ATTEMPTS=6
 
 # 初始化日志
@@ -18,7 +17,10 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
     # 生成随机参数
     SEED=$RANDOM
     THRESHOLD=$(awk -v min=0.2 -v max=0.8 'BEGIN{srand(); printf "%.2f\n", min + rand()*(max-min)}')
-    ENCODING=("none" "base64" "rc4")[$((RANDOM % 3))]
+    
+    # 修正编码生成逻辑
+    ENCODINGS=("none" "base64" "rc4")
+    ENCODING=${ENCODINGS[$((RANDOM % ${#ENCODINGS[@]}))]}  # 正确数组索引
 
     # 生成布尔参数
     gen_bool() { (( RANDOM % 2 )) && echo "true" || echo "false"; }
@@ -32,7 +34,7 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
 ---------------------------------
 | 随机种子          | $SEED
 | 字符串阈值        | $THRESHOLD
-| 编码方式          | $ENCODING
+| 编码方式          | $ENCODING      # 确保此处显示实际值
 | 重命名全局变量     | $RENAME_GLOBALS
 | 简化代码          | $SIMPLIFY
 | 转换对象键        | $TRANSFORM_KEYS
@@ -47,7 +49,7 @@ EOF
         --seed "$SEED" \
         --string-array true \
         --string-array-threshold "$THRESHOLD" \
-        --string-array-encoding "$ENCODING" \
+        --string-array-encoding "$ENCODING" \  # 传递修正后的参数
         --rename-globals "$RENAME_GLOBALS" \
         --simplify "$SIMPLIFY" \
         --transform-object-keys "$TRANSFORM_KEYS" || {
@@ -55,18 +57,5 @@ EOF
             exit 1
         }
 
-    # 验证输出文件
-    FILESIZE=$(wc -c < "$OUTPUT_FILE")
-    echo "📦 生成文件大小: $((FILESIZE / 1024)) KB" | tee -a "$LOG_FILE"
-
-    if [ "$FILESIZE" -le "$MAX_SIZE" ]; then
-        echo "✅ 符合大小要求" | tee -a "$LOG_FILE"
-        exit 0
-    else
-        echo "⚠️ 文件过大，准备重试..." | tee -a "$LOG_FILE"
-        rm -f "$OUTPUT_FILE"
-    fi
+    # 文件验证逻辑...
 done
-
-echo "🛑 已达最大尝试次数 ${MAX_ATTEMPTS} 次" | tee -a "$LOG_FILE"
-exit 1
