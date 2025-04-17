@@ -17,10 +17,8 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
     # 生成随机参数
     SEED=$RANDOM
     THRESHOLD=$(awk -v min=0.2 -v max=0.8 'BEGIN{srand(); printf "%.2f\n", min + rand()*(max-min)}')
-    
-    # 修正编码生成逻辑
     ENCODINGS=("none" "base64" "rc4")
-    ENCODING=${ENCODINGS[$((RANDOM % ${#ENCODINGS[@]}))]}  # 正确数组索引
+    ENCODING=${ENCODINGS[$((RANDOM % ${#ENCODINGS[@]}))]}
 
     # 生成布尔参数
     gen_bool() { (( RANDOM % 2 )) && echo "true" || echo "false"; }
@@ -34,14 +32,14 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
 ---------------------------------
 | 随机种子          | $SEED
 | 字符串阈值        | $THRESHOLD
-| 编码方式          | $ENCODING      # 确保此处显示实际值
+| 编码方式          | $ENCODING
 | 重命名全局变量     | $RENAME_GLOBALS
 | 简化代码          | $SIMPLIFY
 | 转换对象键        | $TRANSFORM_KEYS
 ---------------------------------
 EOF
 
-    # 执行混淆命令
+    # 修正续行符问题
     javascript-obfuscator "$INPUT_FILE" \
         --output "$OUTPUT_FILE" \
         --compact true \
@@ -49,7 +47,7 @@ EOF
         --seed "$SEED" \
         --string-array true \
         --string-array-threshold "$THRESHOLD" \
-        --string-array-encoding "$ENCODING" \  # 传递修正后的参数
+        --string-array-encoding "$ENCODING" \
         --rename-globals "$RENAME_GLOBALS" \
         --simplify "$SIMPLIFY" \
         --transform-object-keys "$TRANSFORM_KEYS" || {
@@ -57,5 +55,5 @@ EOF
             exit 1
         }
 
-    # 文件验证逻辑...
+    # 文件验证逻辑保持不变...
 done
