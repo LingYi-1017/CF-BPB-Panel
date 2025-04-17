@@ -6,39 +6,40 @@ on:
     paths:
       - "origin.js"
       - "auto-obfuscate.sh"
-  workflow_dispatch:  # ✅ 手动触发按钮支持
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 第一步：完整检出代码库
-      - name: ✅ 检出代码
+      # 第一步：带权限检出
+      - name: ✅ 检出代码 (含写权限)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整提交历史以便 rebase
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}  # 关键权限配置
 
-      # 第二步：配置 Git 身份
+      # 第二步：Git 身份认证
       - name: 🛠️ 配置 Git 用户
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # 第三步：同步最新代码
-      - name: 🔄 同步远程仓库
+      # 第三步：代码同步
+      - name: 🔄 同步最新代码
         run: git pull origin main --rebase
 
       # 第四步：安装依赖
-      - name: 📦 安装 JavaScript Obfuscator
+      - name: 📦 安装混淆工具
         run: npm install -g javascript-obfuscator
 
-      # 第五步：生成混淆文件
+      # 第五步：生成文件
       - name: 🛡️ 执行混淆脚本
         run: bash ./auto-obfuscate.sh
 
-      # 第六步：提交变更
-      - name: 📮 自动提交更改
+      # 第六步：强制认证推送
+      - name: 🚀 提交并推送更改
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
@@ -46,4 +47,7 @@ jobs:
           file_pattern: |
             _worker.js
             obfuscation-log.txt
-          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          # 强制使用令牌认证
+          token: ${{ secrets.GITHUB_TOKEN }}
