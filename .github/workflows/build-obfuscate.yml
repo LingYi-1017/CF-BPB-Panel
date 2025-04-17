@@ -13,35 +13,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔍 检出代码
+      # 第一步：完整检出代码（含历史记录）
+      - name: 🔍 检出仓库
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 获取完整提交历史
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🛠️ 环境配置
+      # 第二步：配置Git环境
+      - name: 🛠️ 配置Git环境
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull origin main --rebase
+          git config --global pull.rebase true  # 启用rebase方式拉取
 
-      - name: 📦 安装依赖
+      # 第三步：强制同步远程分支
+      - name: 🔄 同步最新代码
+        run: |
+          git fetch origin main:main --force
+          git reset --hard origin/main
+
+      # 第四步：安装依赖
+      - name: 📦 安装混淆工具
         run: npm install -g javascript-obfuscator@4.0.0
 
-      - name: ⚙️ 执行混淆
+      # 第五步：执行混淆脚本
+      - name: ⚙️ 生成混淆文件
         run: |
           chmod +x auto-obfuscate.sh
-          ./auto-obfuscate.sh || (echo "::error file=auto-obfuscate.sh::混淆过程失败"; exit 1)
+          ./auto-obfuscate.sh || (echo "::error::混淆过程失败"; exit 1)
 
-      - name: 📜 查看日志
-        if: always()
+      # 第六步：最终同步（防止其他提交导致冲突）
+      - name: ⚡ 最终代码同步
         run: |
-          echo "=== 混淆日志 ==="
-          cat obfuscation-log.txt
-          echo "==============="
+          git pull origin main --rebase --allow-unrelated-histories
 
-      - name: 🚀 提交结果
-        uses: stefanzweifel/git-auto-commit-action@v5
+      # 第七步：提交并强制推送
+      - name: 🚀 自动提交结果
+        uses: stefanzweifel/git-auto-commit-action@v5  # 修正Action名称
         with:
           branch: main
           commit_message: ":lock: 自动混淆更新 [$(date +'%m-%d@%H:%M')]"
@@ -50,3 +59,5 @@ jobs:
             obfuscation-log.txt
           commit_user_name: "github-actions[bot]"
           commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          force: true  # 关键修复：启用强制推送
+          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
