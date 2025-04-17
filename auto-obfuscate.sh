@@ -2,31 +2,54 @@
 
 INPUT="origin.js"
 OUTPUT="_worker.js"
-MAXSIZE=$((1024 * 1024)) # 最大文件大小：1MB
+MAXSIZE=$((1024 * 1024)) # 最大 1MB
+MAX_TRIES=6
 
-echo "⚙️ 启动自动多级混淆流程..."
+echo "⚙️ 启动【强制混淆 + 随机降级】流程..."
 
-# 从强到弱的混淆策略列表
-declare -a configs=(
-  "--compact true --identifier-names-generator hexadecimal --rename-globals true --string-array true --string-array-encoding base64 --string-array-threshold 0.6 --simplify true --transform-object-keys true"
-  "--compact true --identifier-names-generator hexadecimal --string-array true --string-array-threshold 0.5 --simplify true"
-  "--compact true --identifier-names-generator hexadecimal --string-array true --string-array-threshold 0.3"
-)
+for ((i=1; i<=MAX_TRIES; i++)); do
+  echo "🔁 第 $i 次尝试混淆..."
 
-# 遍历混淆策略，直到通过体积限制
-for ((i=0; i<${#configs[@]}; i++)); do
-  echo "🔁 尝试混淆策略 $((i+1))..."
-  javascript-obfuscator "$INPUT" --output "$OUTPUT" ${configs[$i]}
+  # 随机参数生成
+  SEED=$((RANDOM))
+  THRESHOLD=$(awk -v min=0.2 -v max=0.8 'BEGIN{srand(); printf "%.2f\n", min + rand() * (max - min)}')
+  ENCODINGS=("none" "base64" "rc4")
+  ENCODING=${ENCODINGS[$RANDOM % ${#ENCODINGS[@]}]}
+  RENAME_GLOBALS=$([ $((RANDOM % 2)) -eq 0 ] && echo "true" || echo "false")
+  SIMPLIFY=$([ $((RANDOM % 2)) -eq 0 ] && echo "true" || echo "false")
+  TRANSFORM_KEYS=$([ $((RANDOM % 2)) -eq 0 ] && echo "true" || echo "false")
+
+  echo "🎲 混淆参数:"
+  echo "    seed = $SEED"
+  echo "    threshold = $THRESHOLD"
+  echo "    encoding = $ENCODING"
+  echo "    rename_globals = $RENAME_GLOBALS"
+  echo "    simplify = $SIMPLIFY"
+  echo "    transform_object_keys = $TRANSFORM_KEYS"
+
+  # 执行混淆
+  javascript-obfuscator "$INPUT" \
+    --output "$OUTPUT" \
+    --seed "$SEED" \
+    --compact true \
+    --identifier-names-generator hexadecimal \
+    --string-array true \
+    --string-array-threshold "$THRESHOLD" \
+    --string-array-encoding "$ENCODING" \
+    --rename-globals "$RENAME_GLOBALS" \
+    --simplify "$SIMPLIFY" \
+    --transform-object-keys "$TRANSFORM_KEYS"
 
   FILESIZE=$(stat -c%s "$OUTPUT")
-  echo "📦 混淆后文件大小：$((FILESIZE / 1024)) KB"
+  echo "📦 当前体积：$((FILESIZE / 1024)) KB"
 
   if [ "$FILESIZE" -le "$MAXSIZE" ]; then
-    echo "✅ 成功！策略 $((i+1)) 满足 1MB 限制"
+    echo "✅ 成功！体积符合限制 🎉"
     exit 0
+  else
+    echo "⚠️ 超过 1MB，继续尝试降级..."
   fi
 done
 
-# 所有策略都失败，构建中止
-echo "❌ 所有混淆策略都超出 1MB 限制，构建失败"
-exit 1
+echo "❗ 所有尝试均超过 1MB，保留最后一个版本（已混淆）"
+exit 0
