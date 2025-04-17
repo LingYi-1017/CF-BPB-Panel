@@ -22,16 +22,19 @@ jobs:
       - name: 🧪 执行自动混淆脚本
         run: bash ./auto-obfuscate.sh
 
-      - name: 🛠️ 拉取远程以避免冲突
+      - name: ➕ 添加混淆文件到暂存区
+        run: git add _worker.js obfuscation-log.txt # Assuming these are the files modified/created
+
+      - name: 🛠️ 配置 Git 用户
         run: |
           git config user.name github-actions[bot]
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull origin main --rebase
 
-      - name: 🚀 自动提交混淆文件和日志
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          branch: main
-          commit_message: ':lock: 自动混淆 _worker.js (≤1MB, 随机策略)'
-          commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
-          file_pattern: '_worker.js obfuscation-log.txt'
+      - name: 💾 提交混淆文件
+        run: git commit -m ':lock: 自动混淆 _worker.js (≤1MB, 随机策略)' --author="github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+
+      - name: 🚀 拉取远程以避免冲突
+        run: git pull origin main --rebase
+
+      - name: ⬆️ 推送更改
+        run: git push origin main
