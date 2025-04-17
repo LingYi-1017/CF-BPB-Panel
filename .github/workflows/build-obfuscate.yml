@@ -13,28 +13,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 第一步：完整检出代码库
       - name: ✅ 检出代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整提交历史以便 rebase
 
-      - name: 🧰 安装 JavaScript Obfuscator
-        run: npm install -g javascript-obfuscator
-
-      - name: 🧪 执行自动混淆脚本
-        run: bash ./auto-obfuscate.sh
-
-      - name: ➕ 添加混淆文件到暂存区
-        run: git add _worker.js obfuscation-log.txt # Assuming these are the files modified/created
-
+      # 第二步：配置 Git 身份
       - name: 🛠️ 配置 Git 用户
         run: |
-          git config user.name github-actions[bot]
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: 💾 提交混淆文件
-        run: git commit -m ':lock: 自动混淆 _worker.js (≤1MB, 随机策略)' --author="github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-
-      - name: 🚀 拉取远程以避免冲突
+      # 第三步：同步最新代码
+      - name: 🔄 同步远程仓库
         run: git pull origin main --rebase
 
-      - name: ⬆️ 推送更改
-        run: git push origin main
+      # 第四步：安装依赖
+      - name: 📦 安装 JavaScript Obfuscator
+        run: npm install -g javascript-obfuscator
+
+      # 第五步：生成混淆文件
+      - name: 🛡️ 执行混淆脚本
+        run: bash ./auto-obfuscate.sh
+
+      # 第六步：提交变更
+      - name: 📮 自动提交更改
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: main
+          commit_message: ":lock: 自动混淆 _worker.js (基于最新代码)"
+          file_pattern: |
+            _worker.js
+            obfuscation-log.txt
+          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
