@@ -27,30 +27,32 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
 
-      # 第三步：同步远程分支（修复关键步骤）
-      - name: 🔄 强制同步代码
+      # 第三步：同步最新代码（关键修复步骤）
+      - name: 🔄 同步远程分支
         run: |
-          git fetch origin main  # 仅获取远程更新
-          git reset --hard origin/main  # 重置本地分支到远程状态
-          git clean -fd  # 清理未跟踪文件
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd -x  # 清理所有未跟踪文件（包括.gitignore排除的）
 
       # 第四步：安装依赖
       - name: 📦 安装混淆工具
         run: npm install -g javascript-obfuscator@4.0.0
 
-      # 第五步：执行混淆脚本
-      - name: ⚙️ 生成混淆文件
+      # 第五步：生成混淆文件
+      - name: ⚙️ 执行混淆脚本
         run: |
           chmod +x auto-obfuscate.sh
-          ./auto-obfuscate.sh || (echo "::error::混淆失败"; exit 1)
+          ./auto-obfuscate.sh || (echo "::error::混淆过程失败"; exit 1)
 
-      # 第六步：提交前同步
-      - name: ⚡ 最终同步
+      # 第六步：提交前最终同步
+      - name: ⚡ 提交前同步
         run: |
+          git add .
+          git commit -m "临时保存" || echo "无新变更需要保存"
           git pull origin main --rebase
 
-      # 第七步：自动提交
-      - name: 🚀 推送变更
+      # 第七步：强制推送结果
+      - name: 🚀 自动提交并推送
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
