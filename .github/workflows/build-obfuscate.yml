@@ -13,37 +13,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 第一步：带权限检出
-      - name: ✅ 检出代码
+      # 1. 检出代码（含完整提交历史）
+      - name: ✅ 检出仓库
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}  # 关键权限配置
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 第二步：Git 身份认证
-      - name: 🛠️ 配置 Git 用户
+      # 2. 配置Git身份
+      - name: 🛠️ 配置Git用户
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # 第三步：代码同步
-      - name: 🔄 同步最新代码
+      # 3. 同步最新代码
+      - name: 🔄 拉取最新代码
         run: git pull origin main --rebase
 
-      # 第四步：安装依赖
-      - name: 📦 安装混淆工具
-        run: npm install -g javascript-obfuscator
+      # 4. 安装依赖
+      - name: 📦 安装JavaScript混淆器
+        run: npm install -g javascript-obfuscator@latest
 
-      # 第五步：生成文件
-      - name: 🛡️ 执行混淆脚本
-        run: bash ./auto-obfuscate.sh
+      # 5. 执行混淆脚本
+      - name: 🛡️ 运行自动混淆
+        run: |
+          chmod +x auto-obfuscate.sh
+          ./auto-obfuscate.sh || (echo "::error::混淆失败"; exit 1)
 
-      # 第六步：提交变更 (修正版)
-      - name: 🚀 自动提交更改
+      # 6. 调试日志
+      - name: 📜 查看混淆日志
+        if: always()
+        run: |
+          echo "==== 混淆日志 ===="
+          cat obfuscation-log.txt
+          echo "=================="
+
+      # 7. 提交变更
+      - name: 🚀 自动提交结果
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
-          commit_message: ":lock: 自动混淆 _worker.js (基于最新代码)"
+          commit_message: ":lock: 自动混淆更新 [$(date +'%m-%d %H:%M')]"
           file_pattern: |
             _worker.js
             obfuscation-log.txt
